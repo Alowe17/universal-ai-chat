@@ -14,4 +14,6 @@ public interface ChatMessageRepository extends JpaRepository<ChatMessage, Long> 
     Optional<ChatMessage> findByIdAndChatId(Long id, Long chatId);
 
     long countByChatId(Long chatId);
+
+    long deleteByChatId(Long chatId);
 }

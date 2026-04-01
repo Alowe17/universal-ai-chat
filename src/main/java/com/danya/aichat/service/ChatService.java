@@ -19,15 +19,18 @@ import java.util.Comparator;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import java.util.Set;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
 import org.apache.pdfbox.pdmodel.PDDocument;
 import org.apache.pdfbox.text.PDFTextStripper;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.web.server.ResponseStatusException;
 import org.springframework.web.multipart.MultipartFile;
+import org.springframework.web.server.ResponseStatusException;
 
 @Service
 @RequiredArgsConstructor
@@ -35,6 +38,7 @@ import org.springframework.web.multipart.MultipartFile;
 public class ChatService {
 
     private static final String DEFAULT_CHAT_TITLE = "Новый чат";
+    private static final String EMPTY_CHAT_PREVIEW = "Диалог еще пуст";
     private static final int MAX_TITLE_LENGTH = 120;
     private static final int MAX_MESSAGE_LENGTH = 12_000;
     private static final long MAX_PDF_SIZE_BYTES = 15L * 1024 * 1024;
@@ -54,7 +58,7 @@ public class ChatService {
 
     public List<ChatSummaryResponse> getChatsForUser(String username) {
         User user = requireUser(username);
-        return chatRepository.findAllByUserIdOrderByUpdatedAtDesc(user.getId())
+        return chatRepository.findAllByUserIdOrderBySortOrderDescUpdatedAtDesc(user.getId())
                 .stream()
                 .map(this::toSummary)
                 .toList();
@@ -67,6 +71,7 @@ public class ChatService {
         Chat chat = new Chat();
         chat.setUser(user);
         chat.setTitle(resolveInitialTitle(requestedTitle));
+        chat.setSortOrder(nextChatSortOrder(user));
 
         Chat savedChat = chatRepository.save(chat);
         return ChatDetailResponse.from(savedChat, List.of(), List.of());
@@ -76,6 +81,46 @@ public class ChatService {
         Chat chat = requireOwnedChat(username, chatId);
         List<ChatMessage> messages = chatMessageRepository.findAllByChatIdOrderByCreatedAtAscIdAsc(chatId);
         return ChatDetailResponse.from(chat, messages, getDocumentResponses(chatId));
+    }
+
+    @Transactional
+    public ChatSummaryResponse renameChat(String username, Long chatId, String requestedTitle) {
+        Chat chat = requireOwnedChat(username, chatId);
+        chat.setTitle(normalizeTitle(requestedTitle));
+        chat.touch();
+        return toSummary(chatRepository.save(chat));
+    }
+
+    @Transactional
+    public void deleteChat(String username, Long chatId) {
+        Chat chat = requireOwnedChat(username, chatId);
+        chatDocumentRepository.deleteByChatId(chat.getId());
+        chatMessageRepository.deleteByChatId(chat.getId());
+        chatRepository.delete(chat);
+    }
+
+    @Transactional
+    public List<ChatSummaryResponse> reorderChats(String username, List<Long> chatIds) {
+        User user = requireUser(username);
+        List<Chat> chats = chatRepository.findAllByUserIdOrderBySortOrderDescUpdatedAtDesc(user.getId());
+        validateRequestedChatOrder(chatIds, chats);
+
+        Map<Long, Chat> chatsById = chats.stream()
+                .collect(Collectors.toMap(Chat::getId, Function.identity()));
+
+        long nextSortOrder = chatIds.size();
+        List<Chat> reorderedChats = new ArrayList<>();
+        for (Long chatId : chatIds) {
+            Chat chat = chatsById.get(chatId);
+            chat.setSortOrder(nextSortOrder--);
+            reorderedChats.add(chat);
+        }
+
+        chatRepository.saveAll(reorderedChats);
+        return chatRepository.findAllByUserIdOrderBySortOrderDescUpdatedAtDesc(user.getId())
+                .stream()
+                .map(this::toSummary)
+                .toList();
     }
 
     @Transactional
@@ -179,7 +224,7 @@ public class ChatService {
                 .filter(content -> content != null && !content.isBlank())
                 .findFirst()
                 .map(this::buildPreview)
-                .orElse("Диалог еще пуст");
+                .orElse(EMPTY_CHAT_PREVIEW);
 
         return ChatSummaryResponse.from(chat, preview, chatMessageRepository.countByChatId(chat.getId()));
     }
@@ -195,9 +240,42 @@ public class ChatService {
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Chat not found"));
     }
 
+    private long nextChatSortOrder(User user) {
+        return chatRepository.findTopByUserIdOrderBySortOrderDesc(user.getId())
+                .map(Chat::getSortOrder)
+                .orElse(0L) + 1;
+    }
+
+    private void validateRequestedChatOrder(List<Long> chatIds, List<Chat> chats) {
+        if (chatIds == null || chatIds.isEmpty()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Chat order must not be empty");
+        }
+
+        Set<Long> uniqueRequestedIds = new LinkedHashSet<>(chatIds);
+        if (uniqueRequestedIds.size() != chatIds.size()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Chat order contains duplicate ids");
+        }
+
+        Set<Long> existingIds = chats.stream()
+                .map(Chat::getId)
+                .collect(Collectors.toCollection(LinkedHashSet::new));
+
+        if (uniqueRequestedIds.size() != existingIds.size() || !uniqueRequestedIds.equals(existingIds)) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Chat order must include all user chats exactly once");
+        }
+    }
+
     private String resolveInitialTitle(String requestedTitle) {
         if (requestedTitle == null || requestedTitle.isBlank()) {
             return DEFAULT_CHAT_TITLE;
+        }
+
+        return normalizeTitle(requestedTitle);
+    }
+
+    private String normalizeTitle(String requestedTitle) {
+        if (requestedTitle == null || requestedTitle.isBlank()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Chat title must not be blank");
         }
 
         return truncate(requestedTitle.strip(), MAX_TITLE_LENGTH);

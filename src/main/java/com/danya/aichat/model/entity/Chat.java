@@ -35,6 +35,9 @@ public class Chat {
     @Column(nullable = false, length = 120)
     private String title;
 
+    @Column(name = "sort_order", nullable = false)
+    private Long sortOrder;
+
     @Column(name = "created_at", nullable = false, updatable = false)
     private Instant createdAt;
 
@@ -46,6 +49,9 @@ public class Chat {
         Instant now = Instant.now();
         if (createdAt == null) {
             createdAt = now;
+        }
+        if (sortOrder == null) {
+            sortOrder = 0L;
         }
         if (updatedAt == null) {
             updatedAt = now;

@@ -4,6 +4,8 @@ import com.danya.aichat.model.dto.chat.ChatDetailResponse;
 import com.danya.aichat.model.dto.chat.ChatDocumentResponse;
 import com.danya.aichat.model.dto.chat.ChatSummaryResponse;
 import com.danya.aichat.model.dto.chat.CreateChatRequest;
+import com.danya.aichat.model.dto.chat.RenameChatRequest;
+import com.danya.aichat.model.dto.chat.ReorderChatsRequest;
 import com.danya.aichat.model.entity.CustomUserDetails;
 import com.danya.aichat.service.ChatService;
 import jakarta.validation.Valid;
@@ -14,7 +16,9 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -54,6 +58,32 @@ public class ChatApiController {
             @PathVariable Long chatId
     ) {
         return ResponseEntity.ok(chatService.getChatForUser(currentUser.getUsername(), chatId));
+    }
+
+    @PatchMapping("/{chatId}")
+    public ResponseEntity<ChatSummaryResponse> renameChat(
+            @AuthenticationPrincipal CustomUserDetails currentUser,
+            @PathVariable Long chatId,
+            @Valid @RequestBody RenameChatRequest request
+    ) {
+        return ResponseEntity.ok(chatService.renameChat(currentUser.getUsername(), chatId, request.title()));
+    }
+
+    @DeleteMapping("/{chatId}")
+    public ResponseEntity<Void> deleteChat(
+            @AuthenticationPrincipal CustomUserDetails currentUser,
+            @PathVariable Long chatId
+    ) {
+        chatService.deleteChat(currentUser.getUsername(), chatId);
+        return ResponseEntity.noContent().build();
+    }
+
+    @PostMapping("/reorder")
+    public ResponseEntity<List<ChatSummaryResponse>> reorderChats(
+            @AuthenticationPrincipal CustomUserDetails currentUser,
+            @Valid @RequestBody ReorderChatsRequest request
+    ) {
+        return ResponseEntity.ok(chatService.reorderChats(currentUser.getUsername(), request.chatIds()));
     }
 
     @PostMapping(value = "/{chatId}/documents/pdf", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)

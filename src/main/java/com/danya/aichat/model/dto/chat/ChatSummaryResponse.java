@@ -7,6 +7,7 @@ public record ChatSummaryResponse(
         Long id,
         String title,
         String preview,
+        Long sortOrder,
         Instant createdAt,
         Instant updatedAt,
         long messageCount
@@ -17,6 +18,7 @@ public record ChatSummaryResponse(
                 chat.getId(),
                 chat.getTitle(),
                 preview,
+                chat.getSortOrder(),
                 chat.getCreatedAt(),
                 chat.getUpdatedAt(),
                 messageCount

@@ -7,4 +7,6 @@ import org.springframework.data.jpa.repository.JpaRepository;
 public interface ChatDocumentRepository extends JpaRepository<ChatDocument, Long> {
 
     List<ChatDocument> findAllByChatIdOrderByCreatedAtAsc(Long chatId);
+
+    long deleteByChatId(Long chatId);
 }

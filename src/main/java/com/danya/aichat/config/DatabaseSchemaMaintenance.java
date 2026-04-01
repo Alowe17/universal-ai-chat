@@ -34,6 +34,24 @@ public class DatabaseSchemaMaintenance {
 
             JdbcTemplate jdbcTemplate = new JdbcTemplate(dataSource);
             try {
+                jdbcTemplate.execute("ALTER TABLE chats ADD COLUMN sort_order BIGINT NOT NULL DEFAULT 0");
+            } catch (Exception exception) {
+                log.debug("Skipping chats sort_order add-column migration: {}", exception.getMessage());
+            }
+
+            try {
+                jdbcTemplate.execute("ALTER TABLE chats MODIFY sort_order BIGINT NOT NULL");
+            } catch (Exception exception) {
+                log.debug("Skipping chats sort_order modify migration: {}", exception.getMessage());
+            }
+
+            try {
+                jdbcTemplate.execute("UPDATE chats SET sort_order = id WHERE sort_order IS NULL OR sort_order = 0");
+            } catch (Exception exception) {
+                log.debug("Skipping chats sort_order backfill migration: {}", exception.getMessage());
+            }
+
+            try {
                 jdbcTemplate.execute("ALTER TABLE chat_documents MODIFY extracted_text LONGTEXT NOT NULL");
             } catch (Exception exception) {
                 log.debug("Skipping chat_documents extracted_text migration: {}", exception.getMessage());

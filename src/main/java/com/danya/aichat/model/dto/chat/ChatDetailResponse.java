@@ -8,6 +8,7 @@ import java.util.List;
 public record ChatDetailResponse(
         Long id,
         String title,
+        Long sortOrder,
         Instant createdAt,
         Instant updatedAt,
         List<ChatMessageResponse> messages,
@@ -22,6 +23,7 @@ public record ChatDetailResponse(
         return new ChatDetailResponse(
                 chat.getId(),
                 chat.getTitle(),
+                chat.getSortOrder(),
                 chat.getCreatedAt(),
                 chat.getUpdatedAt(),
                 messages.stream().map(ChatMessageResponse::from).toList(),
