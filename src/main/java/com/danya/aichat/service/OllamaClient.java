@@ -31,7 +31,7 @@ public class OllamaClient {
                 .build();
 
         Map<String, Object> payload = Map.of(
-                "model", ollamaProperties.getModel(),
+                "model", ollamaProperties.getResolvedModel(),
                 "stream", true,
                 "messages", messages
         );
@@ -75,9 +75,15 @@ public class OllamaClient {
             }
         } catch (InterruptedException exception) {
             Thread.currentThread().interrupt();
-            throw new IllegalStateException("Ollama request was interrupted", exception);
+            throw new IllegalStateException(
+                    "Ollama request was interrupted for model " + ollamaProperties.getResolvedModel(),
+                    exception
+            );
         } catch (IOException exception) {
-            throw new IllegalStateException("Failed to communicate with Ollama", exception);
+            throw new IllegalStateException(
+                    "Failed to communicate with Ollama for model " + ollamaProperties.getResolvedModel(),
+                    exception
+            );
         }
     }
 

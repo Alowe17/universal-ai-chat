@@ -10,16 +10,22 @@ public record ChatDetailResponse(
         String title,
         Instant createdAt,
         Instant updatedAt,
-        List<ChatMessageResponse> messages
+        List<ChatMessageResponse> messages,
+        List<ChatDocumentResponse> documents
 ) {
 
-    public static ChatDetailResponse from(Chat chat, List<ChatMessage> messages) {
+    public static ChatDetailResponse from(
+            Chat chat,
+            List<ChatMessage> messages,
+            List<ChatDocumentResponse> documents
+    ) {
         return new ChatDetailResponse(
                 chat.getId(),
                 chat.getTitle(),
                 chat.getCreatedAt(),
                 chat.getUpdatedAt(),
-                messages.stream().map(ChatMessageResponse::from).toList()
+                messages.stream().map(ChatMessageResponse::from).toList(),
+                documents
         );
     }
 }

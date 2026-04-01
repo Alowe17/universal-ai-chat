@@ -2,10 +2,13 @@ const userInfoNode = document.getElementById("user-info");
 const logoutButton = document.getElementById("logout-button");
 const chatListNode = document.getElementById("chat-list");
 const messageListNode = document.getElementById("message-list");
+const documentListNode = document.getElementById("document-list");
 const chatTitleNode = document.getElementById("chat-title");
 const chatSubtitleNode = document.getElementById("chat-subtitle");
 const connectionStatusNode = document.getElementById("connection-status");
 const newChatButton = document.getElementById("new-chat-button");
+const uploadPdfButton = document.getElementById("upload-pdf-button");
+const pdfUploadInput = document.getElementById("pdf-upload-input");
 const composerForm = document.getElementById("composer-form");
 const messageInput = document.getElementById("message-input");
 const sendButton = document.getElementById("send-button");
@@ -15,10 +18,12 @@ const state = {
     chats: [],
     activeChatId: null,
     messagesByChatId: new Map(),
+    documentsByChatId: new Map(),
     activeGenerations: new Set(),
     socket: null,
     reconnectTimerId: null,
-    manualDisconnect: false
+    manualDisconnect: false,
+    uploadingPdf: false
 };
 
 async function bootstrap() {
@@ -107,6 +112,7 @@ async function createChat() {
             messageCount: chat.messages.length
         });
         state.messagesByChatId.set(chat.id, chat.messages);
+        state.documentsByChatId.set(chat.id, chat.documents ?? []);
         await openChat(chat.id, { useCache: true });
     } catch (error) {
         setConnectionStatus("Не удалось создать чат", "error");
@@ -130,6 +136,7 @@ async function openChat(chatId, options = {}) {
 
             const chat = await response.json();
             state.messagesByChatId.set(chatId, chat.messages);
+            state.documentsByChatId.set(chatId, chat.documents ?? []);
             upsertChatSummary({
                 id: chat.id,
                 title: chat.title,
@@ -270,22 +277,26 @@ function renderChatList() {
 function renderActiveChat() {
     const activeChat = state.chats.find(chat => chat.id === state.activeChatId);
     const messages = state.messagesByChatId.get(state.activeChatId) ?? [];
+    const documents = state.documentsByChatId.get(state.activeChatId) ?? [];
 
     if (!activeChat) {
         chatTitleNode.textContent = "Выберите чат";
         chatSubtitleNode.textContent = "Создайте диалог и начните переписку.";
+        documentListNode.innerHTML = "<p class=\"document-empty\">Сначала выберите чат.</p>";
         messageListNode.innerHTML = "<div class=\"empty-state\"><p>Чат еще не выбран.</p></div>";
         updateComposerState();
         return;
     }
 
     chatTitleNode.textContent = activeChat.title;
-    chatSubtitleNode.textContent = `${messages.length} сообщений • обновлен ${formatDate(activeChat.updatedAt)}`;
+    chatSubtitleNode.textContent = `${messages.length} сообщений • ${documents.length} PDF • обновлен ${formatDate(activeChat.updatedAt)}`;
+
+    renderDocumentList(documents);
 
     if (messages.length === 0) {
         messageListNode.innerHTML = `
             <div class="empty-state">
-                <p>Чат готов. Напишите первое сообщение, и ответ придет через Ollama.</p>
+                <p>Чат готов. Напишите первое сообщение или добавьте PDF для работы с документом.</p>
             </div>
         `;
     } else {
@@ -306,6 +317,23 @@ function renderActiveChat() {
     updateComposerState();
 }
 
+function renderDocumentList(documents) {
+    if (!documents.length) {
+        documentListNode.innerHTML = "<p class=\"document-empty\">У этого чата пока нет PDF-файлов.</p>";
+        return;
+    }
+
+    documentListNode.innerHTML = documents
+        .map(document => `
+            <article class="document-card">
+                <strong>${escapeHtml(document.fileName)}</strong>
+                <span>${document.pageCount} стр. • ${document.textLength} символов</span>
+                <small>${formatDate(document.createdAt)}</small>
+            </article>
+        `)
+        .join("");
+}
+
 function updateComposerState() {
     const canSend = Boolean(state.activeChatId)
         && Boolean(state.socket)
@@ -314,6 +342,7 @@ function updateComposerState() {
 
     sendButton.disabled = !canSend;
     messageInput.disabled = !canSend;
+    uploadPdfButton.disabled = !state.activeChatId || state.uploadingPdf;
     messageInput.placeholder = canSend
         ? "Введите сообщение для deepseek-r1:7b..."
         : "Дождитесь подключения WebSocket и завершения генерации";
@@ -406,6 +435,45 @@ function escapeHtml(value) {
         .replaceAll("'", "&#39;");
 }
 
+async function uploadPdf(file) {
+    if (!file || !state.activeChatId) {
+        return;
+    }
+
+    state.uploadingPdf = true;
+    updateComposerState();
+    setConnectionStatus(`Загружаем PDF: ${file.name}`, "pending");
+
+    try {
+        const formData = new FormData();
+        formData.append("file", file);
+
+        const response = await fetch(`/api/chats/${state.activeChatId}/documents/pdf`, {
+            method: "POST",
+            credentials: "include",
+            body: formData
+        });
+
+        if (!response.ok) {
+            const errorText = await response.text();
+            throw new Error(errorText || "PDF upload failed");
+        }
+
+        const uploadedDocument = await response.json();
+        const documents = [...(state.documentsByChatId.get(state.activeChatId) ?? []), uploadedDocument];
+        state.documentsByChatId.set(state.activeChatId, documents);
+        renderDocumentList(documents);
+        setConnectionStatus(`PDF загружен: ${file.name}`, "connected");
+        await openChat(state.activeChatId, { useCache: false });
+    } catch (error) {
+        setConnectionStatus("Не удалось загрузить PDF", "error");
+    } finally {
+        state.uploadingPdf = false;
+        pdfUploadInput.value = "";
+        updateComposerState();
+    }
+}
+
 composerForm?.addEventListener("submit", event => {
     event.preventDefault();
 
@@ -434,6 +502,19 @@ messageInput?.addEventListener("keydown", event => {
 
 newChatButton?.addEventListener("click", async () => {
     await createChat();
+});
+
+uploadPdfButton?.addEventListener("click", () => {
+    if (!state.activeChatId || state.uploadingPdf) {
+        return;
+    }
+
+    pdfUploadInput.click();
+});
+
+pdfUploadInput?.addEventListener("change", async event => {
+    const [file] = event.target.files ?? [];
+    await uploadPdf(file);
 });
 
 logoutButton?.addEventListener("click", async () => {

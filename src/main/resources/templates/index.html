@@ -35,8 +35,22 @@
                 <h2 id="chat-title">Подготовка чата...</h2>
                 <p id="chat-subtitle" class="muted">После подключения можно отправлять сообщения.</p>
             </div>
-            <div class="model-chip">Ollama · deepseek-r1:7b</div>
+            <div class="chat-header-actions">
+                <input id="pdf-upload-input" type="file" accept="application/pdf" hidden>
+                <button id="upload-pdf-button" class="secondary-button" type="button">Добавить PDF</button>
+                <div class="model-chip">Ollama · deepseek-r1:7b</div>
+            </div>
         </header>
+
+        <section class="document-strip">
+            <div class="document-strip-head">
+                <p class="eyebrow">PDF Context</p>
+                <p class="muted">Загрузите PDF, и модель будет учитывать извлеченный из него текст в ответах.</p>
+            </div>
+            <div id="document-list" class="document-list">
+                <p class="document-empty">У этого чата пока нет PDF-файлов.</p>
+            </div>
+        </section>
 
         <div id="message-list" class="message-list">
             <div class="empty-state">

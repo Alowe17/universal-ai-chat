@@ -343,6 +343,14 @@ button:hover {
     margin-bottom: 8px;
 }
 
+.chat-header-actions {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+}
+
 .model-chip {
     padding: 10px 14px;
     border-radius: 999px;
@@ -350,6 +358,42 @@ button:hover {
     color: #24407b;
     font-weight: 700;
     white-space: nowrap;
+}
+
+.document-strip {
+    padding: 20px 28px;
+    border-bottom: 1px solid rgba(203, 213, 225, 0.6);
+    display: grid;
+    gap: 14px;
+}
+
+.document-strip-head p {
+    margin: 0;
+}
+
+.document-list {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 12px;
+}
+
+.document-card {
+    display: grid;
+    gap: 6px;
+    padding: 14px 16px;
+    border-radius: 18px;
+    background: #f7faff;
+    border: 1px solid #dbe5f3;
+}
+
+.document-card strong {
+    color: #1c2740;
+}
+
+.document-card span,
+.document-card small,
+.document-empty {
+    color: #5a6b8c;
 }
 
 .message-list {
@@ -444,6 +488,7 @@ button:hover {
     margin: 0;
 }
 
+#upload-pdf-button:disabled,
 #send-button:disabled {
     cursor: not-allowed;
     opacity: 0.55;
@@ -471,6 +516,7 @@ button:hover {
     }
 
     .chat-header,
+    .document-strip,
     .message-list,
     .composer {
         padding-left: 20px;

@@ -1,10 +1,7 @@
 package com.danya.aichat.model.entity;
 
-import com.danya.aichat.model.enums.ChatMessageRole;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
-import jakarta.persistence.EnumType;
-import jakarta.persistence.Enumerated;
 import jakarta.persistence.FetchType;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
@@ -21,12 +18,12 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 
 @Entity
-@Table(name = "chat_messages")
+@Table(name = "chat_documents")
 @Getter
 @Setter
 @AllArgsConstructor
 @NoArgsConstructor
-public class ChatMessage {
+public class ChatDocument {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -36,13 +33,18 @@ public class ChatMessage {
     @JoinColumn(name = "chat_id", nullable = false)
     private Chat chat;
 
-    @Enumerated(EnumType.STRING)
-    @Column(nullable = false, length = 20)
-    private ChatMessageRole role;
+    @Column(name = "file_name", nullable = false, length = 255)
+    private String fileName;
+
+    @Column(name = "page_count", nullable = false)
+    private Integer pageCount;
+
+    @Column(name = "text_length", nullable = false)
+    private Integer textLength;
 
     @Lob
-    @Column(nullable = false, columnDefinition = "LONGTEXT")
-    private String content;
+    @Column(name = "extracted_text", nullable = false, columnDefinition = "LONGTEXT")
+    private String extractedText;
 
     @Column(name = "created_at", nullable = false, updatable = false)
     private Instant createdAt;

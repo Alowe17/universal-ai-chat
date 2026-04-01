@@ -83,22 +83,30 @@ public class ChatStreamingService {
             log.error("Failed to process chat {} for user {}", chatId, username, exception);
 
             if (promptContext != null) {
-                String fallbackMessage = buildFallbackMessage(assistantContent);
-                ChatMessageResponse failedAssistantMessage = chatService.finalizeAssistantMessage(
-                        username,
-                        promptContext.chat().id(),
-                        promptContext.assistantMessage().id(),
-                        fallbackMessage
-                );
+                try {
+                    String fallbackMessage = buildFallbackMessage(assistantContent);
+                    ChatMessageResponse failedAssistantMessage = chatService.finalizeAssistantMessage(
+                            username,
+                            promptContext.chat().id(),
+                            promptContext.assistantMessage().id(),
+                            fallbackMessage
+                    );
 
-                chatSocketMessenger.sendToUser(
-                        username,
-                        ChatSocketEvent.assistantCompleted(promptContext.chat().id(), failedAssistantMessage)
-                );
-                chatSocketMessenger.sendToUser(
-                        username,
-                        ChatSocketEvent.chatUpdated(chatService.getChatSummary(username, promptContext.chat().id()))
-                );
+                    chatSocketMessenger.sendToUser(
+                            username,
+                            ChatSocketEvent.assistantCompleted(promptContext.chat().id(), failedAssistantMessage)
+                    );
+                    chatSocketMessenger.sendToUser(
+                            username,
+                            ChatSocketEvent.chatUpdated(chatService.getChatSummary(username, promptContext.chat().id()))
+                    );
+                } catch (Exception persistenceException) {
+                    log.error(
+                            "Failed to persist assistant message for chat {} after Ollama response",
+                            promptContext.chat().id(),
+                            persistenceException
+                    );
+                }
             }
 
             chatSocketMessenger.sendToUser(
