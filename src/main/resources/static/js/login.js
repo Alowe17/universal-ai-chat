@@ -1,7 +1,7 @@
 const loginForm = document.getElementById("login-form");
 const messageNode = document.getElementById("login-message");
 
-loginForm?.addEventListener("submit", async (event) => {
+loginForm?.addEventListener("submit", async event => {
     event.preventDefault();
     messageNode.textContent = "Проверяем данные...";
     messageNode.className = "form-message";
@@ -28,9 +28,11 @@ loginForm?.addEventListener("submit", async (event) => {
 
         messageNode.textContent = "Успешный вход. Перенаправляем...";
         messageNode.className = "form-message success";
+        window.AppEvents?.notify("Вход выполнен успешно.", "success");
         window.location.href = "/";
     } catch (error) {
         messageNode.textContent = error.message || "Ошибка входа";
         messageNode.className = "form-message error";
+        window.AppEvents?.notify(error.message || "Ошибка входа.", "error");
     }
 });

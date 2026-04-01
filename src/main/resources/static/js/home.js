@@ -26,6 +26,10 @@ const state = {
     uploadingPdf: false
 };
 
+function notify(message, variant = "info", ttl) {
+    window.AppEvents?.notify(message, variant, ttl);
+}
+
 async function bootstrap() {
     const session = await loadSession();
     if (!session) {
@@ -58,6 +62,7 @@ async function loadSession() {
         return session;
     } catch (error) {
         userInfoNode.innerHTML = "<p>Не удалось загрузить данные пользователя.</p>";
+        notify("Не удалось загрузить сессию пользователя.", "error");
         return null;
     }
 }
@@ -84,6 +89,7 @@ async function loadChats() {
         await openChat(state.chats[0].id);
     } catch (error) {
         chatListNode.innerHTML = "<p class=\"sidebar-empty\">Не удалось загрузить список чатов.</p>";
+        notify("Не удалось загрузить список чатов.", "error");
     }
 }
 
@@ -113,9 +119,11 @@ async function createChat() {
         });
         state.messagesByChatId.set(chat.id, chat.messages);
         state.documentsByChatId.set(chat.id, chat.documents ?? []);
+        notify("Чат создан.", "success", 2500);
         await openChat(chat.id, { useCache: true });
     } catch (error) {
         setConnectionStatus("Не удалось создать чат", "error");
+        notify("Не удалось создать чат.", "error");
     }
 }
 
@@ -147,6 +155,7 @@ async function openChat(chatId, options = {}) {
             });
         } catch (error) {
             messageListNode.innerHTML = "<div class=\"empty-state\"><p>Не удалось загрузить сообщения чата.</p></div>";
+            notify("Не удалось открыть выбранный чат.", "error");
             return;
         }
     }
@@ -163,6 +172,7 @@ function connectSocket() {
 
     state.socket.addEventListener("open", () => {
         setConnectionStatus("WebSocket подключен", "connected");
+        notify("Подключение к чату установлено.", "success", 2500);
         updateComposerState();
     });
 
@@ -181,12 +191,14 @@ function connectSocket() {
         }
 
         setConnectionStatus("WebSocket отключен. Переподключение...", "warning");
+        notify("Соединение с чатом потеряно. Пробуем переподключиться...", "warning");
         window.clearTimeout(state.reconnectTimerId);
         state.reconnectTimerId = window.setTimeout(connectSocket, 2000);
     });
 
     state.socket.addEventListener("error", () => {
         setConnectionStatus("Ошибка WebSocket", "error");
+        notify("Транспортная ошибка WebSocket.", "error");
     });
 }
 
@@ -230,6 +242,7 @@ function handleSocketEvent(event) {
         case "chat.error":
             state.activeGenerations.delete(event.chatId);
             setConnectionStatus(event.message ?? "Ошибка чата", "error");
+            notify(event.message ?? "Произошла ошибка при обработке сообщения.", "error");
             updateComposerState();
             break;
         default:
@@ -464,9 +477,11 @@ async function uploadPdf(file) {
         state.documentsByChatId.set(state.activeChatId, documents);
         renderDocumentList(documents);
         setConnectionStatus(`PDF загружен: ${file.name}`, "connected");
+        notify(`PDF загружен: ${file.name}`, "success");
         await openChat(state.activeChatId, { useCache: false });
     } catch (error) {
         setConnectionStatus("Не удалось загрузить PDF", "error");
+        notify(error.message || "Не удалось загрузить PDF.", "error");
     } finally {
         state.uploadingPdf = false;
         pdfUploadInput.value = "";
@@ -529,6 +544,7 @@ logoutButton?.addEventListener("click", async () => {
         credentials: "include"
     });
 
+    notify("Вы вышли из системы.", "info", 2500);
     window.location.href = "/login";
 });
 

@@ -1,7 +1,7 @@
 const registerForm = document.getElementById("register-form");
 const registerMessageNode = document.getElementById("register-message");
 
-registerForm?.addEventListener("submit", async (event) => {
+registerForm?.addEventListener("submit", async event => {
     event.preventDefault();
     registerMessageNode.textContent = "Создаем аккаунт...";
     registerMessageNode.className = "form-message";
@@ -29,9 +29,11 @@ registerForm?.addEventListener("submit", async (event) => {
 
         registerMessageNode.textContent = "Аккаунт создан. Перенаправляем...";
         registerMessageNode.className = "form-message success";
+        window.AppEvents?.notify("Аккаунт создан успешно.", "success");
         window.location.href = "/";
     } catch (error) {
         registerMessageNode.textContent = error.message || "Ошибка регистрации";
         registerMessageNode.className = "form-message error";
+        window.AppEvents?.notify(error.message || "Ошибка регистрации.", "error");
     }
 });
