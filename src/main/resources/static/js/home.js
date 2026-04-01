@@ -38,22 +38,14 @@ async function bootstrap() {
 
     state.session = session.user;
     renderUser(session.user);
+    window.AuthClient?.startSessionRefresh();
     connectSocket();
     await loadChats();
 }
 
 async function loadSession() {
     try {
-        const response = await fetch("/api/app/session", {
-            method: "GET",
-            credentials: "include"
-        });
-
-        if (!response.ok) {
-            throw new Error("Failed to load session");
-        }
-
-        const session = await response.json();
+        const session = await window.AuthClient.ensureSession();
         if (!session.authenticated || !session.user) {
             window.location.href = "/login";
             return null;
@@ -69,9 +61,8 @@ async function loadSession() {
 
 async function loadChats() {
     try {
-        const response = await fetch("/api/chats", {
-            method: "GET",
-            credentials: "include"
+        const response = await window.AuthClient.fetchWithAuth("/api/chats", {
+            method: "GET"
         });
 
         if (!response.ok) {
@@ -95,9 +86,8 @@ async function loadChats() {
 
 async function createChat() {
     try {
-        const response = await fetch("/api/chats", {
+        const response = await window.AuthClient.fetchWithAuth("/api/chats", {
             method: "POST",
-            credentials: "include",
             headers: {
                 "Content-Type": "application/json"
             },
@@ -133,9 +123,8 @@ async function openChat(chatId, options = {}) {
 
     if (!options.useCache || !state.messagesByChatId.has(chatId)) {
         try {
-            const response = await fetch(`/api/chats/${chatId}`, {
-                method: "GET",
-                credentials: "include"
+            const response = await window.AuthClient.fetchWithAuth(`/api/chats/${chatId}`, {
+                method: "GET"
             });
 
             if (!response.ok) {
@@ -163,7 +152,13 @@ async function openChat(chatId, options = {}) {
     renderActiveChat();
 }
 
-function connectSocket() {
+async function connectSocket() {
+    const session = await window.AuthClient.ensureSession().catch(() => null);
+    if (!session?.authenticated) {
+        window.location.href = "/login";
+        return;
+    }
+
     const protocol = window.location.protocol === "https:" ? "wss" : "ws";
     const socketUrl = `${protocol}://${window.location.host}/ws/chat`;
 
@@ -181,7 +176,7 @@ function connectSocket() {
         handleSocketEvent(payload);
     });
 
-    state.socket.addEventListener("close", () => {
+    state.socket.addEventListener("close", async () => {
         state.socket = null;
         state.activeGenerations.clear();
         updateComposerState();
@@ -190,10 +185,13 @@ function connectSocket() {
             return;
         }
 
+        await window.AuthClient.refreshAccessToken({ silent: true });
         setConnectionStatus("WebSocket отключен. Переподключение...", "warning");
         notify("Соединение с чатом потеряно. Пробуем переподключиться...", "warning");
         window.clearTimeout(state.reconnectTimerId);
-        state.reconnectTimerId = window.setTimeout(connectSocket, 2000);
+        state.reconnectTimerId = window.setTimeout(() => {
+            connectSocket();
+        }, 2000);
     });
 
     state.socket.addEventListener("error", () => {
@@ -461,9 +459,8 @@ async function uploadPdf(file) {
         const formData = new FormData();
         formData.append("file", file);
 
-        const response = await fetch(`/api/chats/${state.activeChatId}/documents/pdf`, {
+        const response = await window.AuthClient.fetchWithAuth(`/api/chats/${state.activeChatId}/documents/pdf`, {
             method: "POST",
-            credentials: "include",
             body: formData
         });
 
@@ -534,6 +531,7 @@ pdfUploadInput?.addEventListener("change", async event => {
 
 logoutButton?.addEventListener("click", async () => {
     state.manualDisconnect = true;
+    window.AuthClient?.stopSessionRefresh();
 
     if (state.socket) {
         state.socket.close();
@@ -546,6 +544,10 @@ logoutButton?.addEventListener("click", async () => {
 
     notify("Вы вышли из системы.", "info", 2500);
     window.location.href = "/login";
+});
+
+document.addEventListener("app:auth-refresh-failed", () => {
+    notify("Сессию не удалось обновить. Потребуется повторный вход.", "warning");
 });
 
 bootstrap();
