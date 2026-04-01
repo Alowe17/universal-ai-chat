@@ -7,35 +7,54 @@
     <link rel="stylesheet" href="/css/app.css">
 </head>
 <body class="home-page">
-<main class="home-layout">
-    <header class="hero-card">
-        <div>
-            <p class="eyebrow">AI Chat Workspace</p>
-            <h1>Главная страница проекта</h1>
-            <p class="lead">
-                Базовая веб-оболочка уже готова. Следующим этапом сюда подключим chat UI, STOMP по WebSocket и обмен с Ollama.
-            </p>
+<main class="home-layout app-shell">
+    <aside class="chat-sidebar">
+        <section class="sidebar-head">
+            <p class="eyebrow">Universal AI Chat</p>
+            <h1>Чаты</h1>
+        </section>
+
+        <button id="new-chat-button" class="primary-button" type="button">Новый чат</button>
+        <div id="connection-status" class="connection-status" data-state="pending">Подключение к WebSocket...</div>
+        <div id="chat-list" class="chat-list">
+            <p class="sidebar-empty">Загрузка чатов...</p>
         </div>
-        <button id="logout-button" class="secondary-button" type="button">Выйти</button>
-    </header>
 
-    <section class="grid">
-        <article class="panel">
-            <h2>Текущий пользователь</h2>
-            <div id="user-info" class="info-list">
-                <p>Загрузка данных...</p>
+        <footer class="sidebar-footer">
+            <div id="user-info">
+                <p class="sidebar-note">Загрузка пользователя...</p>
             </div>
-        </article>
+            <button id="logout-button" class="secondary-button" type="button">Выйти</button>
+        </footer>
+    </aside>
 
-        <article class="panel">
-            <h2>Состояние системы</h2>
-            <ul class="status-list">
-                <li>JWT авторизация через cookie подключена</li>
-                <li>Refresh token сохранён в базе</li>
-                <li>Страницы входа и главная готовы</li>
-                <li>Следующий шаг: чат и STOMP/WebSocket</li>
-            </ul>
-        </article>
+    <section class="chat-panel">
+        <header class="chat-header">
+            <div>
+                <p class="eyebrow">Live Conversation</p>
+                <h2 id="chat-title">Подготовка чата...</h2>
+                <p id="chat-subtitle" class="muted">После подключения можно отправлять сообщения.</p>
+            </div>
+            <div class="model-chip">Ollama · deepseek-r1:7b</div>
+        </header>
+
+        <div id="message-list" class="message-list">
+            <div class="empty-state">
+                <p>Загружаем сообщения...</p>
+            </div>
+        </div>
+
+        <form id="composer-form" class="composer">
+            <textarea
+                    id="message-input"
+                    rows="5"
+                    placeholder="Введите сообщение для deepseek-r1:7b..."
+            ></textarea>
+            <div class="composer-actions">
+                <p class="muted">Enter отправляет сообщение, Shift + Enter переносит строку.</p>
+                <button id="send-button" class="primary-button" type="submit">Отправить</button>
+            </div>
+        </form>
     </section>
 </main>
 
