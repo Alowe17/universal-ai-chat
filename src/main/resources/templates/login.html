@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chat AI | Вход</title>
+    <link rel="stylesheet" href="/css/app.css">
+</head>
+<body class="auth-page">
+<main class="auth-layout">
+    <section class="auth-brand">
+        <p class="eyebrow">Universal AI Chat</p>
+        <h1>Вход в AI-чат</h1>
+        <p class="lead">
+            Авторизуйтесь, чтобы продолжить работу с будущим чатом, историей диалогов и интеграцией с Ollama.
+        </p>
+    </section>
+
+    <section class="auth-card">
+        <h2>Войти</h2>
+        <p class="muted">Используйте username или email.</p>
+
+        <form id="login-form" class="auth-form">
+            <label for="login">Логин</label>
+            <input id="login" name="login" type="text" placeholder="username или email" required>
+
+            <label for="password">Пароль</label>
+            <input id="password" name="password" type="password" placeholder="Введите пароль" required>
+
+            <button type="submit">Войти</button>
+        </form>
+
+        <p id="login-message" class="form-message" aria-live="polite"></p>
+    </section>
+</main>
+
+<script src="/js/login.js"></script>
+</body>
+</html>

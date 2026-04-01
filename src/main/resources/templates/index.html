@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chat AI | Главная</title>
+    <link rel="stylesheet" href="/css/app.css">
+</head>
+<body class="home-page">
+<main class="home-layout">
+    <header class="hero-card">
+        <div>
+            <p class="eyebrow">AI Chat Workspace</p>
+            <h1>Главная страница проекта</h1>
+            <p class="lead">
+                Базовая веб-оболочка уже готова. Следующим этапом сюда подключим chat UI, STOMP по WebSocket и обмен с Ollama.
+            </p>
+        </div>
+        <button id="logout-button" class="secondary-button" type="button">Выйти</button>
+    </header>
+
+    <section class="grid">
+        <article class="panel">
+            <h2>Текущий пользователь</h2>
+            <div id="user-info" class="info-list">
+                <p>Загрузка данных...</p>
+            </div>
+        </article>
+
+        <article class="panel">
+            <h2>Состояние системы</h2>
+            <ul class="status-list">
+                <li>JWT авторизация через cookie подключена</li>
+                <li>Refresh token сохранён в базе</li>
+                <li>Страницы входа и главная готовы</li>
+                <li>Следующий шаг: чат и STOMP/WebSocket</li>
+            </ul>
+        </article>
+    </section>
+</main>
+
+<script src="/js/home.js"></script>
+</body>
+</html>
