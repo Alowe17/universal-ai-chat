@@ -3,10 +3,13 @@ package com.danya.aichat.auth;
 import com.danya.aichat.config.JwtUtil;
 import com.danya.aichat.model.dto.auth.AuthResponse;
 import com.danya.aichat.model.dto.login.LoginRequest;
+import com.danya.aichat.model.dto.register.RegisterRequest;
 import com.danya.aichat.model.dto.user.UserResponse;
 import com.danya.aichat.model.entity.CustomUserDetails;
 import com.danya.aichat.model.entity.RefreshToken;
 import com.danya.aichat.model.entity.User;
+import com.danya.aichat.model.enums.Role;
+import com.danya.aichat.repository.UserRepository;
 import com.danya.aichat.service.RefreshTokenService;
 import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletRequest;
@@ -22,6 +25,7 @@ import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -39,11 +43,47 @@ public class Auth {
     private final JwtUtil jwtUtil;
     private final RefreshTokenService refreshTokenService;
     private final AuthenticationManager authenticationManager;
+    private final UserRepository userRepository;
+    private final PasswordEncoder passwordEncoder;
 
-    public Auth(JwtUtil jwtUtil, RefreshTokenService refreshTokenService, AuthenticationManager authenticationManager) {
+    public Auth(
+            JwtUtil jwtUtil,
+            RefreshTokenService refreshTokenService,
+            AuthenticationManager authenticationManager,
+            UserRepository userRepository,
+            PasswordEncoder passwordEncoder
+    ) {
         this.jwtUtil = jwtUtil;
         this.refreshTokenService = refreshTokenService;
         this.authenticationManager = authenticationManager;
+        this.userRepository = userRepository;
+        this.passwordEncoder = passwordEncoder;
+    }
+
+    @PostMapping("/register")
+    public ResponseEntity<?> register(@Valid @RequestBody RegisterRequest registerRequest, HttpServletResponse response) {
+        String username = registerRequest.getUsername().trim();
+        String email = registerRequest.getEmail().trim().toLowerCase();
+
+        if (userRepository.existsByUsernameIgnoreCase(username)) {
+            return ResponseEntity.status(HttpStatus.CONFLICT).body("Username is already taken");
+        }
+
+        if (userRepository.existsByEmailIgnoreCase(email)) {
+            return ResponseEntity.status(HttpStatus.CONFLICT).body("Email is already registered");
+        }
+
+        User user = new User();
+        user.setUsername(username);
+        user.setEmail(email);
+        user.setPassword(passwordEncoder.encode(registerRequest.getPassword()));
+        user.setRole(Role.USER);
+
+        User savedUser = userRepository.save(user);
+        issueAuthCookies(response, savedUser);
+
+        return ResponseEntity.status(HttpStatus.CREATED)
+                .body(new AuthResponse("Registration successful", UserResponse.from(savedUser)));
     }
 
     @PostMapping("/login")
@@ -55,10 +95,7 @@ public class Auth {
 
             CustomUserDetails principal = (CustomUserDetails) authentication.getPrincipal();
             User user = principal.getUser();
-            RefreshToken refreshToken = refreshTokenService.create(user);
-
-            writeAccessCookie(response, jwtUtil.generateAccessToken(user.getUsername()));
-            writeRefreshCookie(response, refreshToken.getToken());
+            issueAuthCookies(response, user);
 
             return ResponseEntity.ok(new AuthResponse("Login successful", UserResponse.from(user)));
         } catch (BadCredentialsException exception) {
@@ -132,6 +169,12 @@ public class Auth {
                 .build();
 
         response.addHeader(HttpHeaders.SET_COOKIE, refreshCookie.toString());
+    }
+
+    private void issueAuthCookies(HttpServletResponse response, User user) {
+        RefreshToken refreshToken = refreshTokenService.create(user);
+        writeAccessCookie(response, jwtUtil.generateAccessToken(user.getUsername()));
+        writeRefreshCookie(response, refreshToken.getToken());
     }
 
     private void clearAuthCookies(HttpServletResponse response) {

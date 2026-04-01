@@ -157,6 +157,21 @@ button:hover {
     margin: 16px 0 0;
 }
 
+.switch-link {
+    margin: 18px 0 0;
+    color: #42516d;
+}
+
+.switch-link a {
+    color: #3159b7;
+    text-decoration: none;
+    font-weight: 700;
+}
+
+.switch-link a:hover {
+    text-decoration: underline;
+}
+
 .form-message.error {
     color: #b42318;
 }

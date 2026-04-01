@@ -26,6 +26,15 @@ public class PageController {
         return "login";
     }
 
+    @GetMapping("/register")
+    public String register(Authentication authentication) {
+        if (isAuthenticated(authentication)) {
+            return "redirect:/";
+        }
+
+        return "register";
+    }
+
     private boolean isAuthenticated(Authentication authentication) {
         return authentication != null
                 && authentication.isAuthenticated()
